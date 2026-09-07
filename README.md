@@ -1,5 +1,7 @@
 # ravn-mcp-glama
 
+[![ravn-mcp-glama MCP server](https://glama.ai/mcp/servers/ravndex/ravn-mcp-glama/badges/score.svg)](https://glama.ai/mcp/servers/ravndex/ravn-mcp-glama)
+
 Local/stdio MCP server for [RAVN](https://ravn.exchange) — cross-chain swap execution
 across 12 venues and 16 chains, including **native (non-wrapped) Bitcoin** as either
 source or destination. No signup, no API key, 0% protocol fee.
