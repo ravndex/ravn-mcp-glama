@@ -3,7 +3,7 @@
 [![ravn-mcp-glama MCP server](https://glama.ai/mcp/servers/ravndex/ravn-mcp-glama/badges/score.svg)](https://glama.ai/mcp/servers/ravndex/ravn-mcp-glama)
 
 Local/stdio MCP server for [RAVN](https://ravn.exchange) — cross-chain swap execution
-across 12 venues and 16 chains, including **native (non-wrapped) Bitcoin** as either
+across 13 venues and 16 chains, including **native (non-wrapped) Bitcoin** as either
 source or destination. No signup, no API key, 0% protocol fee.
 
 **This is a secondary distribution channel.** RAVN's primary MCP server is hosted and
@@ -51,10 +51,15 @@ npm run build
 
 | Tool | What it does |
 | --- | --- |
-| `ravn_quote` | Best-priced route across all 12 venues for a given pair/amount |
+| `ravn_quote` | Best-priced route across all 13 venues for a given pair/amount |
 | `ravn_execute` | Turn a quote into a signable transaction, typed data, or a deposit address |
+| `ravn_submit_signature` | Submit a collected signature to actually place a `SIGNATURE`-type order |
 | `ravn_status` | Normalized swap status (pending → processing → success) |
 | `ravn_health` | Which venues are live right now |
+| `ravn_tokens` | RAVN's own listed token registry for a chain |
+| `ravn_tokens_resolve` | Resolve an arbitrary token address to its metadata |
+| `ravn_btc_coverage` | Which tokens on a chain actually route from native Bitcoin |
+| `ravn_chains` | Every chain RAVN lists a token registry for |
 | `ravn_btc_prepare_send` | Builds a ready-to-sign PSBT for a Bitcoin-source deposit — runs entirely locally against [mempool.space](https://mempool.space)'s public API, no RAVN server involved |
 
 ## Custody

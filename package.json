@@ -1,6 +1,6 @@
 {
   "name": "ravn-mcp-glama",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Local/stdio MCP server for RAVN's cross-chain swap API, including native Bitcoin. Thin client over the public REST API at app.ravn.exchange/api/v1 — built to satisfy Glama's build/grade listing requirements alongside RAVN's hosted remote MCP server.",
   "type": "module",
   "main": "dist/index.js",
