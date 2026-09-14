@@ -20,7 +20,7 @@ import { prepareBtcSend } from "./btc-prepare-send.js";
 
 const RAVN_API_BASE = "https://app.ravn.exchange/api/v1";
 
-const chainIdField = z.number().int().describe("Numeric chain id, e.g. 1=Ethereum, 8453=Base, -1=Bitcoin, -2=Solana — see ravn_health for the live venue list");
+const chainIdField = z.number().int().describe("Numeric chain id, e.g. 1=Ethereum, 8453=Base, -1=Bitcoin, -2=Solana — see ravn_chains for the full list, or ravn_health for live venue status");
 const tokenField = z.string().describe("Token contract address, or 0xEeeeeEeeeEeEeeEeEeEeeeEEeeeeEeeeeeeeEEeE for the chain's native coin");
 const apiKeyField = z.string().optional().describe("Your RAVN API key, if you have one — raises your rate limit (see https://docs.ravn.exchange/tools/get-api-key)");
 
@@ -59,6 +59,35 @@ const btcPrepareSendInputSchema = {
   network: z.enum(["mainnet", "testnet"]).optional().describe("Defaults to mainnet"),
 };
 
+const hexSignatureField = z.string().regex(/^0x[0-9a-fA-F]+$/, "Must be a 0x hex signature");
+
+const submitSignatureInputSchema = {
+  quoteToken: z.string().describe("The quoteToken from ravn_quote"),
+  signature: hexSignatureField.describe("Signature over the typedData from ravn_execute"),
+  approvalSignature: hexSignatureField.optional().describe("0x Gasless only: signature over approvalData, when ravn_execute returned one"),
+  apiKey: apiKeyField,
+};
+
+const tokensInputSchema = {
+  chainId: chainIdField,
+  apiKey: apiKeyField,
+};
+
+const tokensResolveInputSchema = {
+  chainId: chainIdField,
+  address: z.string().describe("Token contract address / mint to resolve"),
+  apiKey: apiKeyField,
+};
+
+const btcCoverageInputSchema = {
+  chainId: chainIdField.describe("The destination chain to check BTC-source coverage on"),
+  apiKey: apiKeyField,
+};
+
+const chainsInputSchema = {
+  apiKey: apiKeyField,
+};
+
 async function callRavn(path: string, init: { method: "GET" | "POST"; body?: unknown; apiKey?: string; query?: Record<string, string> }) {
   const url = new URL(`${RAVN_API_BASE}${path}`);
   if (init.query) for (const [k, v] of Object.entries(init.query)) url.searchParams.set(k, v);
@@ -78,9 +107,13 @@ async function callRavn(path: string, init: { method: "GET" | "POST"; body?: unk
 const server = new McpServer({
   name: "ravn",
   title: "RAVN",
-  version: "1.0.0",
+  version: "1.1.0",
+  // Hardcoded, not computed: this package deliberately has no internal RAVN code to import
+  // a live venue/chain count from (see the file doc comment above) — re-check against
+  // https://app.ravn.exchange/api/v1/chains and the venue table at
+  // https://docs.ravn.exchange/supported next time a venue or chain is added.
   description:
-    "Cross-chain swap execution across 12 venues and 16 chains, including native " +
+    "Cross-chain swap execution across 13 venues and 16 chains, including native " +
     "(non-wrapped) Bitcoin as either source or destination. No signup, no API key, 0% " +
     "protocol fee. This package is a local/stdio client over RAVN's public REST API — " +
     "for zero-install, point any MCP client at the hosted server instead: " +
@@ -119,6 +152,21 @@ server.registerTool(
 );
 
 server.registerTool(
+  "ravn_submit_signature",
+  {
+    title: "Submit a signed RAVN order",
+    description:
+      "For a SIGNATURE-type ravn_execute result only: submit the signature(s) you collected (over typedData, and approvalData if present) to actually place the order. RAVN decodes the venue from quoteToken and routes to the right venue-specific submit path — you never touch a per-venue endpoint. Returns a statusRef — pass it to ravn_status as `ref` to poll this swap.",
+    inputSchema: submitSignatureInputSchema,
+    annotations: { title: "Submit a signed RAVN order", readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+  },
+  async (args) => {
+    const { apiKey, ...body } = args;
+    return callRavn("/submit-signature", { method: "POST", body, apiKey });
+  }
+);
+
+server.registerTool(
   "ravn_status",
   {
     title: "Check RAVN swap status",
@@ -141,6 +189,62 @@ server.registerTool(
     annotations: { title: "Check RAVN venue health", readOnlyHint: true, openWorldHint: true },
   },
   async () => callRavn("/health", { method: "GET" })
+);
+
+server.registerTool(
+  "ravn_tokens",
+  {
+    title: "List RAVN's token registry for a chain",
+    description:
+      "RAVN's own listed token registry for one chain — populate a token picker without hardcoding one. This is \"what RAVN knows about and might route\", not a per-pair routability guarantee for any specific pair; call ravn_quote to check that.",
+    inputSchema: tokensInputSchema,
+    annotations: { title: "List RAVN's token registry for a chain", readOnlyHint: true, openWorldHint: true },
+  },
+  async ({ chainId, apiKey }) => {
+    return callRavn("/tokens", { method: "GET", apiKey, query: { chainId: String(chainId) } });
+  }
+);
+
+server.registerTool(
+  "ravn_tokens_resolve",
+  {
+    title: "Resolve a token address to its metadata",
+    description:
+      "Resolve an arbitrary token address to its metadata (symbol, name, decimals) via an on-chain read — for a paste-any-address flow, when the token isn't necessarily on ravn_tokens's list.",
+    inputSchema: tokensResolveInputSchema,
+    annotations: { title: "Resolve a token address to its metadata", readOnlyHint: true, openWorldHint: true },
+  },
+  async ({ chainId, address, apiKey }) => {
+    return callRavn("/tokens/resolve", { method: "GET", apiKey, query: { chainId: String(chainId), address } });
+  }
+);
+
+server.registerTool(
+  "ravn_btc_coverage",
+  {
+    title: "Which tokens actually route from native Bitcoin",
+    description:
+      "For a swap where native BTC is the source, not every token on the destination chain is reachable. Returns which of ravn_tokens's list on `chainId` a BTC venue can actually route to, and how many venues serve each, so you can build a token list that matches what will really quote instead of discovering it one NO_LIQUIDITY at a time. BTC-as-source only — selling a token INTO BTC isn't restricted the same way (nearly any token can be sold into BTC), so this has nothing useful to say about that direction.",
+    inputSchema: btcCoverageInputSchema,
+    annotations: { title: "Which tokens actually route from native Bitcoin", readOnlyHint: true, openWorldHint: true },
+  },
+  async ({ chainId, apiKey }) => {
+    return callRavn("/tokens/btc-coverage", { method: "GET", apiKey, query: { chainId: String(chainId) } });
+  }
+);
+
+server.registerTool(
+  "ravn_chains",
+  {
+    title: "List every chain RAVN supports",
+    description:
+      "Every chain RAVN lists a token registry for (see ravn_tokens). Static, doesn't change per request, safe to cache instead of hardcoding a chain table.",
+    inputSchema: chainsInputSchema,
+    annotations: { title: "List every chain RAVN supports", readOnlyHint: true, openWorldHint: true },
+  },
+  async ({ apiKey }) => {
+    return callRavn("/chains", { method: "GET", apiKey });
+  }
 );
 
 server.registerTool(
