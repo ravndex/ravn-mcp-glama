@@ -108,13 +108,13 @@ const server = new McpServer({
   name: "ravn",
   title: "RAVN",
   version: "1.1.0",
-  // Hardcoded, not computed: this package deliberately has no internal RAVN code to import
-  // a live venue/chain count from (see the file doc comment above) — re-check against
-  // https://app.ravn.exchange/api/v1/chains and the venue table at
-  // https://docs.ravn.exchange/supported next time a venue or chain is added.
+  // No venue or chain counts: this package has no internal RAVN code to read live numbers
+  // from (see the file doc comment above), and hardcoded counts went stale twice while
+  // directories kept copying them. Live numbers: https://app.ravn.exchange/api/v1/health
+  // and https://app.ravn.exchange/api/v1/chains.
   description:
-    "Cross-chain swap execution across 13 venues and 16 chains, including native " +
-    "(non-wrapped) Bitcoin as either source or destination. No signup, no API key, 0% " +
+    "Cross-chain swap execution across every live venue, on EVM chains, native " +
+    "(non-wrapped) Bitcoin and Solana, as either source or destination. No signup, no API key, 0% " +
     "protocol fee. This package is a local/stdio client over RAVN's public REST API — " +
     "for zero-install, point any MCP client at the hosted server instead: " +
     "https://app.ravn.exchange/api/mcp",
@@ -126,7 +126,7 @@ server.registerTool(
   {
     title: "Get a RAVN swap quote",
     description:
-      "Get a swap quote from RAVN — same-chain or cross-chain, across 16 chains including native (non-wrapped) Bitcoin and Solana as source or destination. Free, no API key or payment required. Returns a quoteToken; pass it to ravn_execute to get a signable/broadcastable execution payload.",
+      "Get a swap quote from RAVN — same-chain or cross-chain, across EVM chains, native (non-wrapped) Bitcoin and Solana as source or destination. Free, no API key or payment required. Returns a quoteToken; pass it to ravn_execute to get a signable/broadcastable execution payload.",
     inputSchema: quoteInputSchema,
     annotations: { title: "Get a RAVN swap quote", readOnlyHint: true, openWorldHint: true },
   },

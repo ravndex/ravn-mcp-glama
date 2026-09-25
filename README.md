@@ -3,7 +3,7 @@
 [![ravn-mcp-glama MCP server](https://glama.ai/mcp/servers/ravndex/ravn-mcp-glama/badges/score.svg)](https://glama.ai/mcp/servers/ravndex/ravn-mcp-glama)
 
 Local/stdio MCP server for [RAVN](https://ravn.exchange) — cross-chain swap execution
-across 13 venues and 16 chains, including **native (non-wrapped) Bitcoin** as either
+across every live venue, on EVM chains, **native (non-wrapped) Bitcoin** and Solana, as either
 source or destination. No signup, no API key, 0% protocol fee.
 
 **This is a secondary distribution channel.** RAVN's primary MCP server is hosted and
@@ -51,7 +51,7 @@ npm run build
 
 | Tool | What it does |
 | --- | --- |
-| `ravn_quote` | Best-priced route across all 13 venues for a given pair/amount |
+| `ravn_quote` | Best-priced route across every live venue for a given pair/amount |
 | `ravn_execute` | Turn a quote into a signable transaction, typed data, or a deposit address |
 | `ravn_submit_signature` | Submit a collected signature to actually place a `SIGNATURE`-type order |
 | `ravn_status` | Normalized swap status (pending → processing → success) |
